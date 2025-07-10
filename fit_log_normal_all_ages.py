@@ -9,7 +9,7 @@ import ipywidgets as widgets
 from matplotlib.widgets import Button
 
 # --- CONFIG ---
-input_csv = 'data/males_20_shuttle_run.csv'  # Change as needed
+input_csv = 'data/males_standing_long_jump.csv'  # Change as needed
 output_dir = 'data/output'
 os.makedirs(output_dir, exist_ok=True)
 output_csv = os.path.join(output_dir, os.path.basename(input_csv))
@@ -25,6 +25,42 @@ def load_percentile_data(csv_path):
 percentiles, ages, values_matrix = load_percentile_data(input_csv)
 cum_probs = np.array(percentiles) / 100.0
 
+# --- DETECT AND HANDLE INVERTED DATA ---
+def detect_and_fix_inverted_data(values_matrix, cum_probs):
+    """
+    Detect if data is inverted (higher percentiles have lower values).
+    If inverted, flip the data and return True, otherwise return False.
+    """
+    # Check if the trend is inverted by comparing first and last percentiles
+    # across all age groups
+    inverted_count = 0
+    total_checks = 0
+    
+    for row in values_matrix:
+        if len(row) >= 2:  # Need at least 2 points to check trend
+            first_val = row[0]  # 1st percentile value
+            last_val = row[-1]  # 99th percentile value
+            if first_val > last_val:  # Higher percentile has lower value = inverted
+                inverted_count += 1
+            total_checks += 1
+    
+    # If majority of rows show inverted trend, consider data inverted
+    is_inverted = inverted_count > total_checks / 2
+    
+    if is_inverted:
+        print("WARNING: Data appears to be inverted (higher percentiles have lower values).")
+        print("This is unusual for performance metrics. Inverting data to correct format.")
+        print("If this is incorrect, please check your data source.")
+        
+        # Invert the data by flipping the values array
+        values_matrix_inverted = np.flip(values_matrix, axis=1)
+        return values_matrix_inverted, True
+    else:
+        return values_matrix, False
+
+# Apply inversion detection and correction
+values_matrix, data_was_inverted = detect_and_fix_inverted_data(values_matrix, cum_probs)
+
 # --- FITTING ---
 def fit_lognorm_percentiles(values, cum_probs):
     def quantile_fit_loss(params):
@@ -39,24 +75,24 @@ def fit_lognorm_percentiles(values, cum_probs):
 fit_results = []
 for i, row in enumerate(values_matrix):
     shape, scale = fit_lognorm_percentiles(row, cum_probs)
-    fit_results.append((ages[i], shape, scale, 0))  # loc is always 0
+    fit_results.append((ages[i], shape, scale, 0, data_was_inverted))  # loc is always 0, add invert flag
 
 # --- SAVE OUTPUT CSV ---
-output_df = pd.DataFrame(fit_results, columns=['age', 'shape', 'scale', 'loc'])
+output_df = pd.DataFrame(fit_results, columns=['age', 'shape', 'scale', 'loc', 'invert_data'])
 output_df.to_csv(output_csv, index=False)
 
 # --- PRINT TO CONSOLE ---
-print('age,shape,scale,loc')
-for age, shape, scale, loc in fit_results:
-    print(f'{age},{shape:.6f},{scale:.6f},{loc}')
+print('age,shape,scale,loc,invert_data')
+for age, shape, scale, loc, invert_flag in fit_results:
+    print(f'{age},{shape:.6f},{scale:.6f},{loc},{invert_flag}')
 
 # --- EXPORT IMAGES FOR ALL AGES ---
 export_dir = 'data/output/images'
 os.makedirs(export_dir, exist_ok=True)
 
 def save_age_plot(age_idx, save_path):
-    vals = values_matrix[age_idx]
-    shape, scale, loc = fit_results[age_idx][1:]
+    vals = values_matrix[age_idx]  # This is already corrected (inverted if needed)
+    shape, scale, loc, invert_flag = fit_results[age_idx][1:]
     percentiles_smooth = np.linspace(1, 99, 500)
     cum_probs_smooth = percentiles_smooth / 100
     fitted_values = lognorm.ppf(cum_probs_smooth, shape, loc=0, scale=scale)
@@ -93,7 +129,11 @@ def save_age_plot(age_idx, save_path):
     ax4.grid(True)
     ax4.legend()
     
-    fig.suptitle(f'Log-Normal Fit for Age {ages[age_idx]}', fontsize=16)
+    # Add note about data inversion if applicable
+    if invert_flag:
+        fig.suptitle(f'Log-Normal Fit for Age {ages[age_idx]} (Data was inverted)', fontsize=16)
+    else:
+        fig.suptitle(f'Log-Normal Fit for Age {ages[age_idx]}', fontsize=16)
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -123,8 +163,8 @@ bnext = Button(axnext, 'Next')
 # Plotting function
 plot_handles = {'fig': fig, 'ax1': ax1, 'ax2': ax2, 'ax4': ax4}
 def update_plot(age_idx):
-    vals = values_matrix[age_idx]
-    shape, scale, loc = fit_results[age_idx][1:]
+    vals = values_matrix[age_idx]  # This is already corrected (inverted if needed)
+    shape, scale, loc, invert_flag = fit_results[age_idx][1:]
     percentiles_smooth = np.linspace(1, 99, 500)
     cum_probs_smooth = percentiles_smooth / 100
     fitted_values = lognorm.ppf(cum_probs_smooth, shape, loc=0, scale=scale)
@@ -156,7 +196,11 @@ def update_plot(age_idx):
     ax4.set_ylabel('Cumulative Probability')
     ax4.grid(True)
     ax4.legend()
-    fig.suptitle(f'Age: {ages[age_idx]}', fontsize=16)
+    # Add note about data inversion if applicable
+    if invert_flag:
+        fig.suptitle(f'Age: {ages[age_idx]} (Data was inverted)', fontsize=16)
+    else:
+        fig.suptitle(f'Age: {ages[age_idx]}', fontsize=16)
     fig.canvas.draw_idle()
 
 # Button callbacks
