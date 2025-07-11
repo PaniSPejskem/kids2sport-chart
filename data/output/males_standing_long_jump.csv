@@ -1,0 +1,15 @@
+age,shape,scale,loc,invert_data,fit_method
+5.0,0.8922108836394366,20.0,0,False,linear_interp
+6.0,0.9537406789169101,20.0,0,False,linear_interp
+7.0,0.9902526493013057,20.0,0,False,linear_interp
+8.0,1.0229372944463706,20.0,0,False,linear_interp
+9.0,1.0500812185815054,20.0,0,False,linear_interp
+10.0,1.072799634264937,20.0,0,False,linear_interp
+11.0,1.0971672586229007,20.0,0,False,linear_interp
+12.0,1.1250347337082667,20.0,0,False,linear_interp
+13.0,1.1583632263639374,20.0,0,False,linear_interp
+14.0,1.1878125605621634,20.0,0,False,linear_interp
+15.0,1.2071277086696774,20.0,0,False,linear_interp
+16.0,1.217256693893543,20.0,0,False,linear_interp
+17.0,1.222669470043268,20.0,0,False,linear_interp
+18.0,1.225280807750046,20.0,0,False,linear_interp
