@@ -254,6 +254,94 @@ if uploaded_file is not None:
                     mime="application/zip"
                 )
         
+        # JSON Export Section
+        st.subheader("📋 JSON Export")
+        st.markdown("Copy the JSON data below to use in other systems:")
+        
+        # Determine the method based on the data
+        if all(method == 'lognorm' for method in fit_methods):
+            json_method = "lognorm"
+        elif all(method == 'linear_interp' for method in fit_methods):
+            json_method = "lerp"
+        else:
+            json_method = "mixed"
+        
+        # Create JSON data
+        if json_method == "lognorm":
+            # Log-normal format
+            json_data = {
+                "data": [
+                    {
+                        "age": float(age),
+                        "loc": float(loc),
+                        "scale": float(scale) if not np.isnan(scale) else 0.0,
+                        "shape": float(shape) if not np.isnan(shape) else 0.0,
+                        "fit_method": "lognorm",
+                        "invert_data": bool(invert_flag)
+                    }
+                    for age, shape, scale, loc, invert_flag, fit_method in fit_results
+                ],
+                "method": "lognorm"
+            }
+        else:
+            # Linear interpolation format
+            json_data = {
+                "data": []
+            }
+            
+            for i, (age, shape, scale, loc, invert_flag, fit_method) in enumerate(fit_results):
+                age_data = {"age": float(age)}
+                
+                # Add percentile values
+                for j, percentile in enumerate(percentiles):
+                    age_data[str(percentile)] = float(values_matrix[i][j])
+                
+                json_data["data"].append(age_data)
+            
+            json_data["method"] = "lerp"
+        
+        # Display JSON with syntax highlighting
+        import json
+        json_str = json.dumps(json_data, indent=2)
+        
+        # Create tabs for different formats
+        tab1, tab2 = st.tabs(["📄 Formatted JSON", "📋 Raw JSON"])
+        
+        with tab1:
+            st.json(json_data)
+        
+        with tab2:
+            st.code(json_str, language="json")
+        
+        # Copy to clipboard functionality
+        st.markdown("**Copy to clipboard:**")
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.text_area(
+                "JSON Data",
+                value=json_str,
+                height=400,
+                help="Select all text and copy to clipboard"
+            )
+        
+        with col2:
+            st.markdown("""
+            **Instructions:**
+            1. Click in the text area
+            2. Press Ctrl+A (Cmd+A on Mac) to select all
+            3. Press Ctrl+C (Cmd+C on Mac) to copy
+            4. Paste into your target system
+            """)
+        
+        # Download JSON file
+        st.download_button(
+            label="📥 Download JSON File",
+            data=json_str,
+            file_name=f"fit_results_{json_method}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+        
     except Exception as e:
         st.error(f"❌ Error processing file: {str(e)}")
         st.info("Please check that your CSV file has the correct format: first column for ages, subsequent columns for percentiles.")
@@ -262,6 +350,6 @@ if uploaded_file is not None:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
-    <p>Built with Streamlit • Log-Normal Distribution Fitter</p>
+    <p>Kids2Sport • Log-Normal Distribution Fitter</p>
 </div>
 """, unsafe_allow_html=True) 
