@@ -302,18 +302,10 @@ if uploaded_file is not None:
             
             json_data["method"] = "lerp"
         
-        # Display JSON with syntax highlighting
+        # Display only Raw JSON with syntax highlighting
         import json
         json_str = json.dumps(json_data, indent=2)
-        
-        # Create tabs for different formats
-        tab1, tab2 = st.tabs(["📄 Formatted JSON", "📋 Raw JSON"])
-        
-        with tab1:
-            st.json(json_data)
-        
-        with tab2:
-            st.code(json_str, language="json")
+        st.code(json_str, language="json")
         
         # Copy to clipboard functionality
         st.markdown("**Copy to clipboard:**")
