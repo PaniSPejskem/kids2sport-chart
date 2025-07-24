@@ -291,11 +291,13 @@ if uploaded_file is not None:
             
             for i, (age, shape, scale, loc, invert_flag, fit_method) in enumerate(fit_results):
                 age_data = {"age": float(age)}
-                
-                # Add percentile values
-                for j, percentile in enumerate(percentiles):
+                # If data was inverted, reverse the percentiles for correct mapping
+                if invert_flag:
+                    percentiles_for_json = list(reversed(percentiles))
+                else:
+                    percentiles_for_json = percentiles
+                for j, percentile in enumerate(percentiles_for_json):
                     age_data[str(percentile)] = float(values_matrix[i][j])
-                
                 json_data["data"].append(age_data)
             
             json_data["method"] = "lerp"
